@@ -45,6 +45,41 @@ class EvaluationError(WorkflowError):
     pass
 
 
+def provider_error(exc):
+    """Only expose known error codes; never echo provider bodies, prompts or keys."""
+    messages = {
+        'credit_balance_exhausted': 'Закончились предоплаченные средства OpenAI API. Проверьте Billing организации.',
+        'insufficient_quota': 'Недостаточно квоты OpenAI API. Проверьте баланс и лимиты организации/проекта этого ключа.',
+        'organization_spend_limit_exceeded': 'Достигнут лимит расходов организации OpenAI API.',
+        'project_spend_limit_exceeded': 'Достигнут лимит расходов API-проекта, которому принадлежит ключ.',
+        'organization_usage_limit_exceeded': 'Достигнут установленный OpenAI лимит использования организации.',
+        'usage_limit_exceeded': 'Достигнут лимит расходов или использования OpenAI API.',
+        'rate_limit_exceeded': 'Слишком много запросов или токенов в минуту. Уменьшите параллельность и подождите сброса лимита.',
+        'slow_down': 'Частота запросов выросла слишком быстро. Уменьшите параллельность и подождите.',
+        'server_is_overloaded': 'Модель временно перегружена. Повторите запрос позже.',
+    }
+    try:
+        body = json.loads(exc.read(16_384))
+        details = body.get('error', {}) if isinstance(body, dict) else {}
+        code = details.get('code') if isinstance(details, dict) else None
+        if code not in messages and isinstance(details, dict) and details.get('type') == 'insufficient_quota':
+            code = 'insufficient_quota'
+    except (ValueError, TypeError, OSError, AttributeError):
+        code = None
+    status = 429 if exc.code == 429 else 502
+    if code in messages:
+        message = f'OpenAI API [{code}]: {messages[code]}'
+    else:
+        by_status = {401: 'Ключ OpenAI API отклонён', 403: 'Нет доступа к выбранной модели',
+                     404: 'Выбранная модель недоступна для API-аккаунта',
+                     429: 'OpenAI API вернул 429 без распознанного кода: проверьте баланс и частоту запросов.'}
+        message = by_status.get(exc.code, 'Ошибка API модели. Проверьте настройки и повторите запрос.')
+    delay = exc.headers.get('Retry-After', '') if exc.headers else ''
+    if code in ('rate_limit_exceeded', 'slow_down', 'server_is_overloaded') and delay.isdigit():
+        message += f' Повторять не ранее чем через {int(delay)} с.'
+    return EvaluationError(message, status)
+
+
 class NoRedirects(HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         raise EvaluationError("API модели вернул неожиданное перенаправление", 502)
@@ -109,9 +144,7 @@ class OpenAIEvaluator:
             with build_opener(NoRedirects()).open(request, timeout=90) as response:
                 content = response.read(MAX_RESPONSE_BYTES + 1)
         except HTTPError as exc:
-            messages = {401: "Ключ OpenAI API отклонён", 403: "Нет доступа к выбранной модели",
-                        404: "Выбранная модель недоступна для API-аккаунта", 429: "Исчерпан лимит или баланс OpenAI API"}
-            raise EvaluationError(messages.get(exc.code, "Ошибка API модели. Проверьте настройки и повторите запрос."), 502) from None
+            raise provider_error(exc) from None
         except (URLError, TimeoutError, OSError):
             raise EvaluationError("Модель не ответила в отведённое время или соединение недоступно", 502) from None
         if len(content) > MAX_RESPONSE_BYTES:

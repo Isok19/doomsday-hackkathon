@@ -5,6 +5,7 @@ from copy import deepcopy
 from pathlib import Path
 from unittest.mock import Mock
 from urllib.error import HTTPError
+from io import BytesIO
 
 import pytest
 
@@ -118,3 +119,22 @@ def test_swap_waits_for_organizer_instructions(sample):
     with pytest.raises(EvaluationError, match='SWAP'):
         OpenAIEvaluator('test', transport=transport)(dialog, checklist)
     transport.assert_not_called()
+
+
+@pytest.mark.parametrize('code, phrase', [
+    ('insufficient_quota', 'Недостаточно квоты'),
+    ('credit_balance_exhausted', 'предоплаченные'),
+    ('project_spend_limit_exceeded', 'API-проекта'),
+    ('rate_limit_exceeded', 'в минуту'),
+    ('slow_down', 'слишком быстро'),
+])
+def test_provider_429_diagnostics(code, phrase):
+    from participant_3.evaluator import provider_error
+    body = json.dumps({'error': {'code': code, 'message': 'test-secret-do-not-expose'}}).encode()
+    exc = HTTPError('private-url', 429, '', {'Retry-After': '30'}, BytesIO(body))
+    error = provider_error(exc)
+    assert error.status == 429
+    assert code in str(error) and phrase in str(error)
+    assert 'test-secret' not in str(error)
+    if code in ('rate_limit_exceeded', 'slow_down'):
+        assert '30 с.' in str(error)

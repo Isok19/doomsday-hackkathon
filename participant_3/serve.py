@@ -13,7 +13,7 @@ def main():
         raise SystemExit('Ключ не введён. Запуск ИИ отменён.')
     os.environ['CQA_ENABLE_AI'] = '1'
     print('Ключ принят в память процесса. Оценка запускается только по запросу пользователя.', flush=True)
-    uvicorn.run('app.main:app', host='127.0.0.1', port=8000)
+    uvicorn.run('app.main:app', host='127.0.0.1', port=8000, reload=True)
 
 
 if __name__ == '__main__':

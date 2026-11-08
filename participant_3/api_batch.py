@@ -31,7 +31,7 @@ def assess(group, cid):
         except (ValueError, UnicodeError):
             detail = 'Ошибка обработки'
         detail = detail if isinstance(detail, str) else 'Ошибка параметров обработки'
-        fatal = exc.code == 503 or any(term in detail.lower() for term in (
+        fatal = exc.code in (429, 503) or any(term in detail.lower() for term in (
             'баланс', 'лимит', 'ключ openai', 'нет доступа', 'модель недоступна', 'подключение'))
         return cid, 'error', detail, fatal
     except (URLError, TimeoutError, OSError, ValueError):
