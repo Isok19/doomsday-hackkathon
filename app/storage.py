@@ -111,13 +111,20 @@ class DialogStore:
                     )
         return group
 
-    def list_dialogs(self, group, language=None, channel=None, limit=100, offset=0):
+    def groups(self):
+        with self.connect() as db:
+            return [row[0] for row in db.execute("SELECT dataset_group_id FROM datasets ORDER BY dataset_group_id")]
+
+    def list_dialogs(self, group, language=None, channel=None, limit=100, offset=0, q=None):
         conditions = ["d.dataset_group_id = ?"]
         values = [group]
         for field, value in (("language", language), ("channel", channel)):
             if value is not None:
                 conditions.append(f"d.{field} = ?")
                 values.append(value)
+        if q:
+            conditions.append("instr(lower(d.conversation_id), lower(?)) > 0")
+            values.append(q)
         where = " AND ".join(conditions)
         with self.connect() as db:
             total = db.execute(

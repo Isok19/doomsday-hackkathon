@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#123b31">
+  <title>CQA — качество диалогов</title>
+  <link rel="stylesheet" href="/frontend/shared/styles.css">
+  <script type="module" src="/frontend/app.js"></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="#dialogs"><span class="brand-mark">C<span>Q</span>A</span><span>Conversation<br>Quality Analytics</span></a>
+    <div class="sidebar-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
+    <nav aria-label="Основная навигация">
+      <a href="#dialogs" data-nav="dialogs"><span class="nav-icon">▤</span>Диалоги</a>
+      <a href="#checklists" data-nav="checklists"><span class="nav-icon">☷</span>Чек-листы</a>
+      <a href="#appeals" data-nav="appeals"><span class="nav-icon">⇄</span>Апелляции</a>
+    </nav>
+    <div class="sidebar-bottom"><span class="status-dot"></span><span id="connection-status">Подключение…</span><small>RU · KZ · EN</small></div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><div>Контроль качества <span class="slash">/</span> <span id="breadcrumb">Диалоги</span></div><a href="/docs" target="_blank" rel="noopener" class="api-link">API ↗</a><span class="avatar" title="Демонстрационный режим без авторизации">QA</span></header>
+    <main id="app" tabindex="-1"><div class="empty">Загружаем рабочее пространство…</div></main>
+    <footer>Conversation Quality Analytics <span>Freedom Broker · CQA Hackathon</span></footer>
+  </div>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
