@@ -16,7 +16,7 @@ class GeminiEvaluator(OpenAIEvaluator):
 
     def _request(self, payload):
         fmt = payload['text']['format']
-        body = {'model': self.model_name,
+        body = {'model': self.model_name, 'reasoning_effort': 'low',
                 'messages': [{'role': 'system', 'content': payload['instructions']}, *payload['input']],
                 'response_format': {'type': 'json_schema', 'json_schema': {
                     'name': fmt['name'], 'strict': True, 'schema': fmt['schema']}}}

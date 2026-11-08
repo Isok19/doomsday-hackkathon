@@ -25,6 +25,7 @@ def test_gemini_wire_format_and_key_is_header_only(monkeypatch):
     assert request.full_url == 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
     body = json.loads(request.data)
     assert body['messages'][0]['role'] == 'system'
+    assert body['reasoning_effort'] == 'low'
     assert body['response_format']['json_schema']['strict'] is True
     assert b'private-test-key' not in request.data
     assert 'private-test-key' not in request.full_url
