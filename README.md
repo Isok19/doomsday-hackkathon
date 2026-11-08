@@ -195,6 +195,26 @@ CORS не требуется. Стили и API-клиент общие; отд�
 
 ## Участник 3: ИИ и сдача результатов
 
+### Gemini
+
+Для Gemini остановите обычный сервер (`Ctrl+C`) и запустите:
+
+```bash
+.venv/bin/python -m participant_3.serve --provider gemini
+```
+
+Вставьте ключ из [Google AI Studio](https://aistudio.google.com/apikey) в скрытый запрос
+`GEMINI_API_KEY` и нажмите Enter. Ключ не записывается в файлы или Git.
+Адаптер `participant_3/gemini.py` использует `gemini-3.8-flash` через официальный
+[совместимый API](https://ai.google.dev/gemini-api/docs/openai). Модель можно изменить через `CQA_AI_MODEL`.
+Применяются тот же чек-лист, проверка доказательств, N/A и серверный расчёт баллов.
+Для обычного запуска через uvicorn нужны `CQA_AI_PROVIDER=gemini`, `GEMINI_API_KEY` и `CQA_ENABLE_AI=1`.
+Подписка в пользовательском приложении не подтверждает квоту API-проекта: доступ проверяется реальным запросом.
+Бесплатный тариф имеет ограничения и отдельные [условия обработки данных](https://ai.google.dev/gemini-api/terms).
+Не передавайте конфиденциальные или персональные данные на бесплатный тариф.
+
+### OpenAI
+
 Модель по умолчанию — `gpt-6.1-sol` через OpenAI Responses API, `reasoning.effort=medium`, Structured Outputs.
 Выбор основан на [документации модели](https://developers.openai.com/api/docs/models/gpt-6.1-sol).
 Это оценка готовой моделью по чек-листу, без обучения на DEV. Точность требует отдельной экспертной проверки.

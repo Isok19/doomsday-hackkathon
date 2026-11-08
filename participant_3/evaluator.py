@@ -188,7 +188,11 @@ class OpenAIEvaluator:
 
 def configured_evaluator():
     # A key on the machine alone does not enable transmission or billable requests.
-    if os.getenv("CQA_ENABLE_AI") != "1" or not os.getenv("OPENAI_API_KEY", "").strip():
+    provider = os.getenv('CQA_AI_PROVIDER', 'openai')
+    if provider not in ('openai', 'gemini'):
+        raise ValueError('CQA_AI_PROVIDER должен быть openai или gemini')
+    key_name = 'GEMINI_API_KEY' if provider == 'gemini' else 'OPENAI_API_KEY'
+    if os.getenv("CQA_ENABLE_AI") != "1" or not os.getenv(key_name, "").strip():
         return None
     knowledge = ""
     if path := os.getenv("CQA_KNOWLEDGE_PATH"):
@@ -196,4 +200,7 @@ def configured_evaluator():
             knowledge = file.read(MAX_INPUT_BYTES + 1)
         if len(knowledge.encode()) > MAX_INPUT_BYTES:
             raise ValueError("Файл базы знаний превышает лимит оценщика")
-    return OpenAIEvaluator(os.environ["OPENAI_API_KEY"], os.getenv("CQA_AI_MODEL") or DEFAULT_MODEL, knowledge)
+    if provider == 'gemini':
+        from participant_3.gemini import GeminiEvaluator, DEFAULT_GEMINI_MODEL
+        return GeminiEvaluator(os.environ[key_name], os.getenv('CQA_AI_MODEL') or DEFAULT_GEMINI_MODEL, knowledge)
+    return OpenAIEvaluator(os.environ[key_name], os.getenv("CQA_AI_MODEL") or DEFAULT_MODEL, knowledge)
