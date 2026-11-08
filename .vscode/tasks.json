@@ -5,21 +5,70 @@
       "label": "CQA: сервер",
       "type": "process",
       "command": "${workspaceFolder}/.venv/bin/python",
-      "windows": { "command": "${workspaceFolder}/.venv/Scripts/python.exe" },
-      "args": ["-m", "uvicorn", "app.main:app", "--reload", "--host", "127.0.0.1", "--port", "8000"],
-      "options": { "cwd": "${workspaceFolder}" },
-      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "windows": {
+        "command": "${workspaceFolder}/.venv/Scripts/python.exe"
+      },
+      "args": [
+        "-m",
+        "uvicorn",
+        "app.main:app",
+        "--reload",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      },
       "problemMatcher": []
     },
     {
       "label": "CQA: тесты",
       "type": "process",
       "command": "${workspaceFolder}/.venv/bin/python",
-      "windows": { "command": "${workspaceFolder}/.venv/Scripts/python.exe" },
-      "args": ["-m", "pytest", "-q"],
-      "options": { "cwd": "${workspaceFolder}" },
-      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "windows": {
+        "command": "${workspaceFolder}/.venv/Scripts/python.exe"
+      },
+      "args": [
+        "-m",
+        "pytest",
+        "-q"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
       "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "CQA: сервер с ИИ (ключ скрыт)",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/bin/python",
+      "windows": {
+        "command": "${workspaceFolder}/.venv/Scripts/python.exe"
+      },
+      "args": [
+        "-m",
+        "participant_3.serve"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      },
       "problemMatcher": []
     }
   ]

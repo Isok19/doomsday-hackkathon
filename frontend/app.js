@@ -1,5 +1,5 @@
 import { api, error } from './shared/api.js';
-import { dialogsPage, dialogPage } from './participant-1/dialogs.js';
+import { dialogsPage, dialogPage } from './participant-1/dialogs.js?v=0.3.0';
 import { checklistsPage, checklistPage } from './participant-4/checklists.js';
 import { appealsPage, appealPage } from './participant-4/appeals.js';
 

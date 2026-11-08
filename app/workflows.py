@@ -98,7 +98,14 @@ class WorkflowStore:
                     created_at TEXT NOT NULL, decision TEXT, resolved_at TEXT,
                     UNIQUE(evaluation_id, criterion_id)
                 );
+                CREATE TABLE IF NOT EXISTS evaluation_failures (
+                    id TEXT PRIMARY KEY, dataset_group_id TEXT NOT NULL, conversation_id TEXT NOT NULL,
+                    checklist_id TEXT NOT NULL, checklist_version INTEGER NOT NULL,
+                    model TEXT NOT NULL, error TEXT NOT NULL, created_at TEXT NOT NULL
+                );
             """)
+            if 'model' not in {row[1] for row in db.execute('PRAGMA table_info(evaluations)')}:
+                db.execute('ALTER TABLE evaluations ADD COLUMN model TEXT')
             db.execute("INSERT OR IGNORE INTO checklists VALUES (?, ?, ?, ?)",
                        ("cqa-default", 1, initial_checklist().model_dump_json(), now()))
 
@@ -145,10 +152,26 @@ class WorkflowStore:
             validate_answer(criterion, answers[criterion["id"]], {m["message_id"] for m in dialog["transcript"]})
         id = str(uuid4())
         with self.dialogs.connect() as db:
-            db.execute("INSERT INTO evaluations VALUES (?, ?, ?, ?, ?, ?, ?)",
+            db.execute("INSERT INTO evaluations (id, dataset_group_id, conversation_id, checklist_id, checklist_version, original_results, created_at, model) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                        (id, payload.dataset_group_id, payload.conversation_id, payload.checklist_id,
-                        payload.checklist_version, json.dumps(results, ensure_ascii=False), now()))
+                        payload.checklist_version, json.dumps(results, ensure_ascii=False), now(),
+                        payload.model.model_dump_json() if payload.model else None))
         return self.evaluation(id)
+
+    def record_failure(self, group, conversation_id, checklist_id, version, model, error):
+        if not model:
+            return
+        with self.dialogs.connect() as db:
+            db.execute('INSERT INTO evaluation_failures VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                       (str(uuid4()), group, conversation_id, checklist_id, version,
+                        json.dumps(model, ensure_ascii=False), error, now()))
+
+    def last_failure(self, group, conversation_id, checklist_id, version):
+        with self.dialogs.connect() as db:
+            row = db.execute('SELECT * FROM evaluation_failures WHERE dataset_group_id=? AND conversation_id=? '
+                             'AND checklist_id=? AND checklist_version=? ORDER BY created_at DESC LIMIT 1',
+                             (group, conversation_id, checklist_id, version)).fetchone()
+        return {**dict(row), 'model': json.loads(row['model'])} if row else None
 
     def evaluation(self, id):
         with self.dialogs.connect() as db:
@@ -164,6 +187,7 @@ class WorkflowStore:
             if decision and decision["action"] == "change":
                 current[appeal["criterion_id"]] = decision["replacement"]
         return {"id": id, "dataset_group_id": row["dataset_group_id"], "conversation_id": row["conversation_id"],
+                "model": json.loads(row["model"]) if row["model"] else None,
                 "created_at": row["created_at"], "checklist": checklist,
                 "original": calculate(checklist, original), "final": calculate(checklist, list(current.values())),
                 "appeals": [self.appeal_row(appeal) for appeal in appeals]}

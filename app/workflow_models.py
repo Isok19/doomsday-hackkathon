@@ -76,6 +76,17 @@ class EvaluationRequest(InputModel):
 
 class EvaluationInput(EvaluationRequest):
     results: list[Answer] = Field(min_length=1, max_length=100)
+    model: "ModelInfo | None" = None
+
+
+class ModelInfo(InputModel):
+    mode: Literal["local", "external_api", "hybrid"]
+    name: str = Field(min_length=1, max_length=300)
+    prompt_version: str = Field(default="", max_length=100)
+    knowledge_sha256: str = Field(default="", max_length=64)
+
+
+EvaluationInput.model_rebuild()
 
 
 class AppealInput(InputModel):

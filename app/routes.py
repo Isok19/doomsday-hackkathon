@@ -15,6 +15,7 @@ from app.workflow_models import (
     AppealInput, ChecklistInput, ChecklistUpdate, DecisionInput, EvaluationInput, EvaluationRequest,
 )
 from app.workflows import WorkflowError
+from participant_3.submission import build_submission
 
 MAX_DATASET_BYTES = 10 * 1024 * 1024
 
@@ -35,11 +36,16 @@ def workflow_router(application, dialogs, workflows):
     @router.get("/capabilities", tags=["Состояние"])
     def capabilities():
         return {"evaluation_available": application.state.evaluator is not None,
+                "evaluation_model": getattr(application.state.evaluator, 'model_name', None),
                 "organizer_import_available": bool(os.getenv("CQA_ORGANIZER_URL"))}
 
     @router.get("/datasets", tags=["Диалоги"])
     def datasets():
         return [dialogs.stats(group) for group in dialogs.groups()]
+
+    @router.get('/submissions', tags=['Сдача результатов'])
+    def submission(dataset_group_id: str, split: str, checklist_id: str = 'cqa-default', version: int = 1):
+        return build_submission(workflows, dataset_group_id, split, os.getenv('CQA_TEAM_NAME', 'zenoxxk'), checklist_id, version)
 
     @router.post("/datasets/import", status_code=201, tags=["Диалоги"])
     async def import_file(request: Request):
@@ -116,10 +122,18 @@ def workflow_router(application, dialogs, workflows):
             raise HTTPException(503, "Автоматическая оценка ещё не подключена. Это следующий этап участника 3.")
         try:
             results = evaluator(dialog, checklist)
-            data = EvaluationInput(**payload.model_dump(), results=results)
+            data = EvaluationInput(**payload.model_dump(), results=results,
+                                   model=getattr(evaluator, 'metadata', None))
+            return workflows.create_evaluation(data)
+        except WorkflowError as exc:
+            workflows.record_failure(payload.dataset_group_id, payload.conversation_id, payload.checklist_id,
+                                     payload.checklist_version, getattr(evaluator, 'metadata', None), str(exc))
+            raise
         except Exception:
+            workflows.record_failure(payload.dataset_group_id, payload.conversation_id, payload.checklist_id,
+                                     payload.checklist_version, getattr(evaluator, 'metadata', None),
+                                     'Модуль оценки не вернул корректный результат.')
             raise HTTPException(502, "Модуль оценки не вернул корректный результат. Повторите попытку позже.") from None
-        return workflows.create_evaluation(data)
 
     @router.get("/appeals", tags=["Апелляции"])
     def appeals():

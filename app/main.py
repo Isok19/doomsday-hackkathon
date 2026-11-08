@@ -5,15 +5,17 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.models import Channel, DatasetStats, DialogDetail, DialogPage, Language
+from app.audio import stream_audio
 from app.storage import DialogStore, read_dataset
 from app.routes import workflow_router
 from app.workflows import WorkflowError, WorkflowStore
+from participant_3.evaluator import configured_evaluator
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -38,6 +40,13 @@ def create_app(dataset_path: Path | None = None, database_path: Path | None = No
     )
     application.state.evaluator = evaluator
     application.include_router(workflow_router(application, store, workflows))
+
+    @application.middleware('http')
+    async def frontend_cache(request, call_next):
+        response = await call_next(request)
+        if request.url.path == '/' or request.url.path.startswith('/frontend/'):
+            response.headers['Cache-Control'] = 'no-store'
+        return response
 
     @application.exception_handler(WorkflowError)
     async def workflow_error(request, exc):
@@ -81,6 +90,11 @@ def create_app(dataset_path: Path | None = None, database_path: Path | None = No
             raise HTTPException(status_code=404, detail="Диалог не найден")
         return result
 
+    @application.get("/api/dialogs/{conversation_id}/audio", tags=["Диалоги"])
+    def dialog_audio(conversation_id: str, request: Request, dataset_group_id: str | None = None):
+        dialog = get_dialog(conversation_id, dataset_group_id)
+        return stream_audio(dialog["audio_url"], request.headers.get("Range"))
+
     frontend = PROJECT_ROOT / "frontend"
     if frontend.exists():
         application.mount("/frontend", StaticFiles(directory=frontend), name="frontend")
@@ -92,4 +106,4 @@ def create_app(dataset_path: Path | None = None, database_path: Path | None = No
     return application
 
 
-app = create_app()
+app = create_app(evaluator=configured_evaluator())
